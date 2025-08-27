@@ -110,7 +110,12 @@ Java.perform(function () {
   // https://android.googlesource.com/platform/ndk/+/master/sources/android/cpufeatures/cpu-features.c#1067
   // Note: If you pass "null" as the first parameter for "Module.findExportByName" it will search in all modules
   try {
-    Interceptor.attach(Module.findExportByName(null, "android_getCpuFamily"), {
+    var getCpuFamily = null;
+    for(var module in Process.enumerateModules()){
+      getCpuFamily = module.findExportByName("android_getCpuFamily");
+      if(getCpuFamily != null) break;
+    }
+    Interceptor.attach(getCpuFamily, {
       onLeave: function (retval) {
         // const int ANDROID_CPU_FAMILY_X86 = 2;
         // const int ANDROID_CPU_FAMILY_X86_64 = 5;
@@ -172,7 +177,9 @@ function bypassJavaFileCheck() {
 }
 
 function bypassNativeFileCheck() {
-  var fopen = Module.findExportByName("libc.so", "fopen");
+  //var fopen = Module.findExportByName("libc.so", "fopen");
+  var fopen = Process.getModuleByName("libc.so").findExportByName("fopen");
+  
   Interceptor.attach(fopen, {
     onEnter: function (args) {
       this.inputPath = args[0].readUtf8String();
@@ -185,9 +192,9 @@ function bypassNativeFileCheck() {
         }
       }
     },
-  });
+  }); 
 
-  var access = Module.findExportByName("libc.so", "access");
+  var access = Process.getModuleByName("libc.so").findExportByName("access");
   Interceptor.attach(access, {
     onEnter: function (args) {
       this.inputPath = args[0].readUtf8String();
@@ -222,10 +229,7 @@ function setProp() {
   //     return ret
   // }
 
-  var system_property_get = Module.findExportByName(
-    "libc.so",
-    "__system_property_get"
-  );
+  var system_property_get = Process.getModuleByName("libc.so").findExportByName("__system_property_get");
   Interceptor.attach(system_property_get, {
     onEnter(args) {
       this.key = args[0].readCString();
@@ -302,7 +306,12 @@ function bypassShellCheck() {
 }
 
 console.log("Attach");
-bypassNativeFileCheck();
+console.log("BypassNativeNow");
+try {
+    bypassNativeFileCheck();   
+} catch (error) {
+    console.log(error)
+}
 bypassJavaFileCheck();
 setProp();
 bypassRootAppCheck();
@@ -609,9 +618,10 @@ Java.perform(function () {
     return this.get.call(this, name);
   };
 
-  Interceptor.attach(Module.findExportByName("libc.so", "fopen"), {
+  var fopen = Process.getModuleByName("libc.so").findExportByName("fopen");
+  Interceptor.attach(fopen, {
     onEnter: function (args) {
-      var path = Memory.readCString(args[0]);
+      var path = ptr(args[0]).readUtf8String();
       path = path.split("/");
       var executable = path[path.length - 1];
       var shouldFakeReturn = RootBinaries.indexOf(executable) > -1;
@@ -623,9 +633,9 @@ Java.perform(function () {
     onLeave: function (retval) {},
   });
 
-  Interceptor.attach(Module.findExportByName("libc.so", "system"), {
+  Interceptor.attach(Process.getModuleByName("libc.so").findExportByName("system"), {
     onEnter: function (args) {
-      var cmd = Memory.readCString(args[0]);
+      var cmd = ptr(args[0]).readUtf8String();
       send("SYSTEM CMD: " + cmd);
       if (
         cmd.indexOf("getprop") != -1 ||
@@ -1579,4 +1589,3 @@ setTimeout(function () {
     console.log("---");
   });
 }, 0);
-
