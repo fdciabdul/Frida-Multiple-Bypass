@@ -177,8 +177,7 @@ function bypassJavaFileCheck() {
 }
 
 function bypassNativeFileCheck() {
-  //var fopen = Module.findExportByName("libc.so", "fopen");
-  var fopen = Process.getModuleByName("libc.so").findExportByName("fopen");
+  var fopen = Process.findModuleByName("libc.so").findExportByName("fopen");
   
   Interceptor.attach(fopen, {
     onEnter: function (args) {
@@ -194,7 +193,7 @@ function bypassNativeFileCheck() {
     },
   }); 
 
-  var access = Process.getModuleByName("libc.so").findExportByName("access");
+  var access = Process.findModuleByName("libc.so").findExportByName("access");
   Interceptor.attach(access, {
     onEnter: function (args) {
       this.inputPath = args[0].readUtf8String();
@@ -229,7 +228,7 @@ function setProp() {
   //     return ret
   // }
 
-  var system_property_get = Process.getModuleByName("libc.so").findExportByName("__system_property_get");
+  var system_property_get = Process.findModuleByName("libc.so").findExportByName("__system_property_get");
   Interceptor.attach(system_property_get, {
     onEnter(args) {
       this.key = args[0].readCString();
@@ -618,7 +617,7 @@ Java.perform(function () {
     return this.get.call(this, name);
   };
 
-  var fopen = Process.getModuleByName("libc.so").findExportByName("fopen");
+  var fopen = Process.findModuleByName("libc.so").findExportByName("fopen");
   Interceptor.attach(fopen, {
     onEnter: function (args) {
       var path = ptr(args[0]).readUtf8String();
@@ -633,7 +632,7 @@ Java.perform(function () {
     onLeave: function (retval) {},
   });
 
-  Interceptor.attach(Process.getModuleByName("libc.so").findExportByName("system"), {
+  Interceptor.attach(Process.findModuleByName("libc.so").findExportByName("system"), {
     onEnter: function (args) {
       var cmd = ptr(args[0]).readUtf8String();
       send("SYSTEM CMD: " + cmd);
