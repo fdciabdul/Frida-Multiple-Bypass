@@ -110,11 +110,7 @@ Java.perform(function () {
   // https://android.googlesource.com/platform/ndk/+/master/sources/android/cpufeatures/cpu-features.c#1067
   // Note: If you pass "null" as the first parameter for "Module.findExportByName" it will search in all modules
   try {
-    var getCpuFamily = null;
-    for(var module in Process.enumerateModules()){
-      getCpuFamily = module.findExportByName("android_getCpuFamily");
-      if(getCpuFamily != null) break;
-    }
+    var getCpuFamily = Module.getGlobalExportByName("android_getCpuFamily");
     Interceptor.attach(getCpuFamily, {
       onLeave: function (retval) {
         // const int ANDROID_CPU_FAMILY_X86 = 2;
